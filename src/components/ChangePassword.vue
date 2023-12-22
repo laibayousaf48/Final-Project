@@ -1,7 +1,7 @@
 <template>
   <div class="q-pa-md content" style="max-width: 100%">
     <q-form @submit="onSubmit" @reset="onReset" class="q-gutter-md">
-      <h4>Forget Password</h4>
+      <h4>Change Password</h4>
       <q-input
         filled
         v-model="oldPassword"
@@ -43,11 +43,16 @@
 import { useQuasar } from "quasar";
 // import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
-
+import { ref, computed } from 'vue';
 import axios from "axios";
-const token = ref(route.params.token);
+
+
 const $q = useQuasar();
 const route = useRoute();
+const token = ref(route.params.token);
+const oldPassword = ref(null);
+const password = ref(null);
+const confirmPassword = ref(null);
 //validation for confirm password
 const passwordMatchRule = computed(() => [
   (val) => (val && val.length > 0) || "Please type something",
@@ -57,7 +62,7 @@ const passwordMatchRule = computed(() => [
 const onSubmit = async () => {
   try {
     const response = await axios.post(
-      `http://192.168.11.164:3000/api/changepassword/${token.value}`,
+      `http://192.168.11.164:3000/api/auth/change-password/${token.value}`,
       {
         password: password.value,
         confirmPassword: confirmPassword.value,

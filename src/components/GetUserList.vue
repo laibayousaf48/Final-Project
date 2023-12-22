@@ -1,43 +1,42 @@
 <template>
   <div>
-    <q-toolbar>
-      <q-toolbar-title> All Users </q-toolbar-title>
+    <q-toolbar class="header">
+      <q-toolbar-title style="margin-left: 20px"> All Users </q-toolbar-title>
+      <!-- <q-input
+        v-model="filter"
+        outlined
+        dense
+        placeholder="Search by Name"
+        @input="search"
+        style="width: 30%; align-item: right"
+        class="searchBar"
+      /> -->
       <q-input
         v-model="filter"
         outlined
         dense
-        placeholder="Search..."
+        placeholder="Search by Name"
         @input="search"
-        style="width: 30%"
+        style="width: 30%; align-item: right"
+        class="searchBar"
       />
-
-      <!-- <q-btn-dropdown
-        color="secondary"
-        label="Sort By"
-        style="padding-left: 30px"
-      >
-        <q-list>
-          <q-item clickable v-close-popup @click="sortItem('pending')">
-            <q-item-section>
-              <q-item-label>Pending</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-item clickable v-close-popup @click="sortItem('accepted')">
-            <q-item-section>
-              <q-item-label>Accepted</q-item-label>
-            </q-item-section>
-          </q-item>
-
-          <q-item clickable v-close-popup @click="sortItem('rejected')">
-            <q-item-section>
-              <q-item-section>
-                <q-item-label>Rejected</q-item-label>
-              </q-item-section>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-btn-dropdown> -->
+    </q-toolbar>
+    <q-toolbar
+    class="head"
+      style="
+        width: 97%;
+        margin-left: 13px;
+        background-color: #eef0e5;
+        font-size: large;
+        display: flex;
+        justify-content: space-between;
+      "
+    >
+      {{ `Total users ${totalusers}` }}
+      <q-separator dark vertical />
+      {{ `Active users ${activeUser}` }}
+      <q-separator dark vertical />
+      {{ `Inactive users ${inactiveUser}` }}
 
       <q-btn
         :ripple="{ center: true }"
@@ -45,7 +44,7 @@
         label="Add New User"
         no-caps
         class="q-page-sticky"
-        style="margin-left: 10px"
+        style="margin-left: 10px; margin-right: 20px"
         @click="openModal"
       />
     </q-toolbar>
@@ -58,7 +57,7 @@
           flat
           bordered
           title="Users"
-          :rows="filterRows"
+          :rows="rows"
           :columns="columns"
           row-key="name"
           light
@@ -66,7 +65,20 @@
           :filter="filter"
           :sort-method="sortMethod"
           loading
-        />
+        >
+          <template v-slot:body-cell-action="props">
+            <q-td :props="props">
+              <span
+                v-if="!props.row.isVerified"
+                @click="handleTextClick(props.row.userId)"
+                style="color: green"
+              >
+                Resend Link
+              </span>
+              <span v-else> Verified </span>
+            </q-td>
+          </template>
+        </q-table>
       </div>
 
       <!-- Modal to add new user -->
@@ -129,6 +141,10 @@ import { onBeforeMount } from "vue";
 import { useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import axios from "axios";
+import { useQuasar } from "quasar";
+import { Notify } from "quasar";
+import { instance } from "@/helper/http-config";
+const $q = useQuasar();
 const { users } = storeToRefs(useStore());
 
 const router = useRouter();
@@ -138,15 +154,49 @@ const accept = ref(false);
 const firstName = ref("");
 const lastName = ref("");
 const email = ref("");
+const totalusers = ref("0");
+const activeUser = ref("0");
+const inactiveUser = ref("0");
 
 const token = localStorage.getItem("token");
+
+const userData = ref("");
+const formatActionColumn = (id, row) => {
+  const isDisabled = row;
+  const userId = id;
+
+  return isDisabled
+    ? "N/A"
+    : `<span @click="handleTextClick(${userId})">Enable</span>`;
+};
+const handleTextClick = async (data) => {
+  try {
+    const response = await instance.patch(
+      `auth/verify-user/${data}`,
+
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    // Handle the response as needed
+    console.log("Response:", response);
+  } catch (error) {
+    $q.notify({
+      message: "Error in Submitting form",
+      color: "secondary",
+    });
+    console.error("Error in Resending Email:", error);
+  }
+};
 
 const qs = require("qs");
 const formData = ref();
 const setUser = async () => {
   try {
-    const response = await axios.post(
-      "http://192.168.11.164:3000/api/createuser",
+    const response = await instance.post(
+      "auth/create-user",
       {
         firstName: firstName.value,
         lastName: lastName.value,
@@ -158,17 +208,20 @@ const setUser = async () => {
         },
       }
     );
-    // Handle the response as needed
+    // Handle response
     console.log("Response:", response);
   } catch (error) {
-    // Handle errors
-    console.error("Error submitting form:", error);
+    $q.notify({
+      message: "Error in Submitting form",
+      color: "secondary",
+    });
+    //console.error("Error submitting form:", error);
   }
 };
 
 function openModal() {
   isModalOpen.value = true;
-  console.log("Modal is open now:", isModalOpen.value);
+
   return true;
 }
 
@@ -182,18 +235,7 @@ function onReset() {
   accept.value = false;
 }
 
-//Filter on status basis
 
-const statusFilter = ref("");
-const sortItem = (status) => {
-  statusFilter.value = status;
-};
-
-const filterRows = computed(() => {
-  return rows.value.filter(
-    (row) => !statusFilter.value || row.isAdmin === statusFilter.value
-  );
-});
 
 // Specify columns for Table
 const columns = [
@@ -214,55 +256,88 @@ const columns = [
 
   { name: "email", align: "left", label: "Email", field: "email" },
   {
-    name: "isAdmin",
+    name: "action",
+    label: "Action",
     align: "left",
-    label: "Status",
-    field: "isAdmin",
-    sortable: true,
-    //filter: (value, row) => row.status === statusFilter.value,
-  },
-  {
-    name: "isVerified",
-    label: "Verification Status",
-    field: "isVerified",
+    field: "action",
+    format: (value, row) => {
+      // Render a clickable text only when isVerified is false
+      const isDisabled = row.isVerified;
+      return isDisabled
+        ? value
+        : `<span @click="() => handleTextClick(${JSON.stringify(
+            row
+          )})">${value}</span>`;
+    },
   },
 ];
-// const token = localStorage.getItem("token");
-//const rows = ref(users.value);
+
+
+
 const rows = ref([]);
 
-// Fetch data from the API when the component is created
+// Fetch Users data from the API
 onBeforeMount(async () => {
   try {
-    const response = await axios.get("http://192.168.11.164:3000/api/getuser", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    rows.value = response.data.data; // Assuming the response data is an array of users
-    console.log(rows.value);
+    const response = await instance.get(
+      "user/get-user",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    rows.value = response.data.data.rows;
+    //console.log(rows.value);
+    totalusers.value = response.data.data.pagination.totalUsers;
+    activeUser.value = response.data.data.pagination.countVerifiedUsers;
+    inactiveUser.value = response.data.data.pagination.countUnverifiedUsers;
   } catch (error) {
-    alert("Error fetching user data:", error);
+    $q.notify({
+      message: "Error in Fetching User data",
+      color: "secondary",
+    });
   }
 });
 
 //Search bar Filter
 const filter = ref("");
 const filteredRows = ref([...rows.value]);
+
+
+// const handleChange = (status) => {
+//   console.log(status);
+// };
+
+// async function fetchData(search) {
+//   try {
+//     console.log(filter.value);
+//     const response = await instance.get(
+//       `applicant/get-applicants/?search=${search.value}`,
+
+//       {
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//         },
+//       }
+//     );
+//     console.log("Response:", response);
+//      rows.value = response.data.data.rows;
+//   } catch (error) {
+//     $q.notify({
+//       message: "Error in Updating Applicant status",
+//       color: "secondary",
+//     });
+//   }
+// }
+
 </script>
 
 <style scoped>
-table,
-th,
-td {
-  padding: 10px;
-  background-color: #ebf3e8;
-}
-.table-container {
-  width: 100%;
-}
-tr {
-  border-bottom: 2px solid black;
+.header{
+  display: flex; 
+  justify-content: space-between;
+  margin-top: 30px;
 }
 table {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -311,18 +386,29 @@ caption {
 .close:hover {
   color: red;
 }
-
+.searchBar {
+  margin-left: 30px;
+  align-self: center;
+}
+.q-toolbar{
+  margin-left: 0;
+  margin-right: 0;
+}
 @media screen and (max-width: 767px) {
   .modal-content {
     width: 100% !important;
   }
 }
+@media screen and (max-width: 767px) {
+  .searchBar {
+    width: 60% !important;
+  }
+}
+@media screen and (max-width: 767px) {
+  .head {
+    width: 100% !important;
+  }
+}
 </style>
 
-<!--
-{
-headers: {
-"Authorization": `${token}`
-}
-}
--->
+

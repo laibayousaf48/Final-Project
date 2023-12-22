@@ -1,27 +1,17 @@
 <template>
   <div class="q-pa-md content" style="max-width: 100%">
     <q-form @submit="onSubmit" @reset="onReset" class="q-gutter-md">
-      <h4>Forget Password</h4>
-      <!-- <q-input
-        filled
-        v-model="email"
-        label="Your Email *"
-        hint="Email"
-        lazy-rules
-        :rules="[
-          (val) => (val && val.length > 0) || 'Please type something',
-          (val) =>
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) ||
-            'Please enter a valid email address',
-        ]"
-      /> -->
+      <h5 style="text-align: center">Forget Password</h5>
       <q-input
         filled
         v-model="email"
         label="Email *"
         type="email"
-       
+       style="width: 400px"
       />
+      <div class="forget">
+        <a href="/">Back to Login Page</a>
+      </div>
       <div>
         <q-btn label="Submit" type="submit" color="secondary" />
         <q-btn
@@ -41,6 +31,7 @@ import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
 const router = useRouter();
 import axios from "axios";
+import { instance } from "@/helper/http-config";
 //const token = ref(route.params.token);
 const $q = useQuasar();
 const email = ref("");
@@ -48,8 +39,8 @@ const email = ref("");
  const token = localStorage.getItem("token");
 const onSubmit = async () => {
   try {
-    const response = await axios.post(
-      `http://192.168.11.164:3000/api/forgetpassword`,
+    const response = await instance.post(
+      `auth/forget-password`,
       {
         email: email.value,
       
@@ -66,6 +57,10 @@ const onSubmit = async () => {
     router.push("/");
   } catch (error) {
     // Handle errors
+    $q.notify({
+          message: "Error submitting form",
+          color: 'secondary'
+        })
     console.error("Error in submitting form:", error);
   }
 };
@@ -75,3 +70,14 @@ function onReset() {
   accept.value = false;
 }
 </script>
+<style scoped>
+.forget a{
+  text-decoration: none;
+}
+.content{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 20px;
+}
+</style>

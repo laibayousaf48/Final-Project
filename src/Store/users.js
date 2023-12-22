@@ -3,6 +3,7 @@ export const useStore = defineStore("users", {
   state: () => {
     return {
       users: [],
+      chat: [],
     };
   },
   getters: {

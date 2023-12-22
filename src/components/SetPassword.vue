@@ -1,23 +1,48 @@
 <template>
-  <div class="q-pa-md content" style="max-width: 100%">
+  <div class="q-pa-md main">
     <q-form @submit="onSubmit" @reset="onReset" class="q-gutter-md">
-      <h4>Set Password</h4>
+      <h5 style="text-align: center;">Set Password</h5>
       <q-input
-        filled
         v-model="password"
+        filled
+        :type="isPwd ? 'password' : 'text'"
         label="Password *"
         hint="Password"
-        lazy-rules
-        :rules="[(val) => (val && val.length > 0) || 'Please type something']"
-      />
+        style="width: 400px"
+        class="content"
+      >
+        <template v-slot:append>
+          <q-icon
+            :name="isPwd ? 'visibility_off' : 'visibility'"
+            class="cursor-pointer eye"
+            @click="isPwd = !isPwd"
+            lazy-rules
+            :rules="[
+              (val) => (val && val.length > 0) || 'Please type something',
+            ]"
+          />
+        </template>
+      </q-input>
+
       <q-input
-        filled
         v-model="confirmPassword"
+        filled
+        :type="pass ? 'password' : 'text'"
         label="Confirm Password *"
         hint="Confirm Password"
-        lazy-rules
-        :rules="passwordMatchRule"
-      />
+        style="width: 400px"
+        class="content"
+      >
+        <template v-slot:append>
+          <q-icon
+            :name="pass ? 'visibility_off' : 'visibility'"
+            class="cursor-pointer eye"
+            @click="pass = !pass"
+            lazy-rules
+            :rules="passwordMatchRule"
+          />
+        </template>
+      </q-input>
       <div>
         <q-btn label="Set Password" type="submit" color="secondary" />
         <q-btn
@@ -37,9 +62,11 @@ import { useQuasar } from "quasar";
 import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
+import { instance } from "@/helper/http-config";
 const $q = useQuasar();
 const route = useRoute();
-// const email = ref(null);
+const isPwd = ref(true);
+const pass = ref(true);
 const password = ref(null);
 const confirmPassword = ref(null);
 const accept = ref(false);
@@ -53,31 +80,39 @@ const passwordMatchRule = computed(() => [
 
 const onSubmit = async () => {
   try {
-    const response = await axios.post(`http://192.168.11.178:3031/users/createPassword/${token.value}`, {
-      password: password.value,
-      confirmPassword: confirmPassword.value,
-    });
+    const response = await instance.post(
+      `auth/set-password/${token.value}`,
+      {
+        password: password.value,
+        confirmPassword: confirmPassword.value,
+      }
+    );
     // Handle the response as needed
     alert("Password set successfully");
     console.log("Response:", response);
   } catch (error) {
     // Handle errors
     console.error("Error submitting form:", error);
+  }finally{
+    onReset();
   }
 };
 
 function onReset() {
-
   password.value = null;
   confirmPassword.value = null;
   accept.value = false;
 }
-//}
+
 </script>
 <style scoped>
-.content {
+.main{
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-left: 45px;
+}
+* .content :deep(.q-field__marginal ){
+width: fit-content !important;
 }
 </style>

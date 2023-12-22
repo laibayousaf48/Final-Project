@@ -1,35 +1,23 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
-import { useStore } from "@/Store/admin";
-import { ref} from "vue"
+// import { useStore } from "@/Store/admin";
+// import { ref} from "vue"
 
-import { storeToRefs } from "pinia";
+//import { storeToRefs } from "pinia";
 
-
-const isAuthenticatedRef = ref(false);
-
-// const isAuthenticated = computed(() => {
-// const { isAdminLoggedIn } = storeToRefs(useStore());
-// console.log(isAdminLoggedIn);
-//   return isAuthenticatedRef.value || isAdminLoggedIn;
-// });
 function guardRoute(to, from, next) {
-  const { auth } = storeToRefs(useStore());
-  isAuthenticatedRef.value = auth.value;
-  console.log(isAuthenticatedRef.value);
-  if (!isAuthenticatedRef.value) {
+  const token = localStorage.getItem("token");
+  if (!token) {
     next();
   } else {
     next("/dashboard");
   }
 }
 
+
 function guardMyroute(to, from, next) {
-  const { auth } = storeToRefs(useStore());
-  //debugger;
-  isAuthenticatedRef.value = auth.value;
-  console.log(isAuthenticatedRef.value);
-  if (isAuthenticatedRef.value) {
+  const token = localStorage.getItem("token");
+  if (token) {
     next(); // allow entering the route
   } else if(!isAuthenticatedRef.value){
     next("/"); // go to '/login';
@@ -40,7 +28,7 @@ const routes = [
   {
     path: '/',
     name: "homeview",
-    //beforeEnter: guardRoute,
+    beforeEnter: guardRoute,
     component: HomeView,
   },
   {
@@ -66,13 +54,18 @@ const routes = [
   {
     path: "/dashboard",
    // name: "dashboard",
-   //beforeEnter: guardMyroute,
+   beforeEnter: guardMyroute,
     component: () => import("../views/DashboardView.vue"),
     children: [
       {
         path: "",
-        redirect: { name: "getUser" },
+        redirect: { name: "applicantList" },
       },
+      // {
+      //   path: "startScreen",
+      //   name: "startScreen",
+      //   component: () => import("@/components/StartingScreen.vue"),
+      // },
       {
         path: "getUser",
         name: "getUser",
@@ -87,6 +80,11 @@ const routes = [
         path: "applicantList",
         name: "applicantList",
         component: () => import("@/components/ApplicantList.vue"),
+      },
+      {
+        path: "userProfile",
+        name: "userProfile",
+        component: () => import("@/components/UserProfile.vue"),
       },
     ],
   },
